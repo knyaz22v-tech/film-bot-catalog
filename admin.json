@@ -1,6 +1,33 @@
 {
   "products": [
     {
+      "id": 4,
+      "title": "Olympus",
+      "price": "25 000 ₽",
+      "price_value": 25000,
+      "description": "Тест",
+      "is_active": true,
+      "photo_url": "photos/4_8.jpg",
+      "photos": [
+        {
+          "id": 8,
+          "url": "photos/4_8.jpg"
+        },
+        {
+          "id": 9,
+          "url": "photos/4_9.jpg"
+        },
+        {
+          "id": 10,
+          "url": "photos/4_10.jpg"
+        },
+        {
+          "id": 11,
+          "url": "photos/4_11.jpg"
+        }
+      ]
+    },
+    {
       "id": 2,
       "title": "Canon a35",
       "price": "25 000 ₽",

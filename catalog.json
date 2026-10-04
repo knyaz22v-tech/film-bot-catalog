@@ -2,6 +2,19 @@
   "bot_username": "film1_friend_bot",
   "products": [
     {
+      "id": 4,
+      "title": "Olympus",
+      "price": "25 000 ₽",
+      "description": "Тест",
+      "photo_url": "photos/4_8.jpg",
+      "photos": [
+        "photos/4_8.jpg",
+        "photos/4_9.jpg",
+        "photos/4_10.jpg",
+        "photos/4_11.jpg"
+      ]
+    },
+    {
       "id": 2,
       "title": "Canon a35",
       "price": "25 000 ₽",
