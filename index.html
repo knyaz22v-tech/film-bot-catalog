@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Каталог фотоаппаратов</title>
+  <!-- Официальный скрипт Telegram для Mini App: тема, кнопка «Назад», окна подтверждения. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    /* Чёрно-белое оформление: только чёрный, белый и серые. Цвета темы Telegram не используем. */
+    :root {
+      --ink: #111111;
+      --paper: #ffffff;
+      --grey: #6b6b6b;
+      --line: #111111;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Georgia, "Times New Roman", serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    header {
+      padding: 20px 16px 14px;
+      border-bottom: 2px solid var(--line);
+      text-align: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    header p {
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--grey);
+      font-style: italic;
+    }
+    main { padding: 16px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+    }
+    .card {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+    }
+    .card img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      display: block;
+      /* В списке фото чёрно-белые — в стиле плёнки. */
+      filter: grayscale(1) contrast(1.05);
+      border-bottom: 1px solid var(--line);
+      background: #eeeeee;
+    }
+    .card .info { padding: 10px; }
+    .card .title {
+      font-size: 15px;
+      line-height: 1.25;
+      margin: 0 0 6px;
+    }
+    .card .price {
+      font-family: "Courier New", monospace;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .message {
+      text-align: center;
+      color: var(--grey);
+      font-style: italic;
+      padding: 48px 16px;
+    }
+    /* Карточка товара поверх списка. */
+    .detail {
+      position: fixed;
+      inset: 0;
+      background: var(--paper);
+      overflow-y: auto;
+      display: none;
+    }
+    .detail.open { display: block; }
+    .detail img {
+      width: 100%;
+      max-height: 60vh;
+      object-fit: contain;
+      display: block;
+      background: #f2f2f2;
+      border-bottom: 2px solid var(--line);
+      /* В карточке фото цветное: клиент видит реальное состояние камеры. */
+    }
+    .detail .body { padding: 18px 16px 120px; }
+    .detail h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.2; }
+    .detail .price {
+      font-family: "Courier New", monospace;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 16px;
+    }
+    .detail .description {
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 16px;
+    }
+    .actions {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      background: var(--paper);
+      border-top: 1px solid var(--line);
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      font-family: inherit;
+      font-size: 16px;
+      padding: 14px;
+      border: 2px solid var(--ink);
+      cursor: pointer;
+    }
+    .buy { flex: 1; background: var(--ink); color: var(--paper); text-transform: uppercase; letter-spacing: 0.08em; }
+    .buy:disabled { opacity: 0.5; }
+    .back { background: var(--paper); color: var(--ink); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Каталог фотоаппаратов</h1>
+    <p>Плёночные камеры от «Плёночного друга»</p>
+  </header>
+
+  <main>
+    <div id="grid" class="grid"></div>
+    <div id="message" class="message">Загружаю каталог…</div>
+  </main>
+
+  <section id="detail" class="detail" aria-hidden="true">
+    <img id="detail-photo" alt="">
+    <div class="body">
+      <h2 id="detail-title"></h2>
+      <div id="detail-price" class="price"></div>
+      <div id="detail-description" class="description"></div>
+    </div>
+    <div class="actions">
+      <button id="detail-back" class="back" type="button">Назад</button>
+      <button id="detail-buy" class="buy" type="button">Хочу купить</button>
+    </div>
+  </section>
+
+  <script>
+    // Telegram.WebApp есть, только когда страница открыта внутри Telegram.
+    const telegram = window.Telegram ? window.Telegram.WebApp : null;
+    const texts = {
+      empty: "Каталог пока пуст. Загляни чуть позже!",
+      loadFailed: "Не получилось загрузить каталог. Закрой окно и открой каталог ещё раз.",
+      noBot: "Не получилось открыть чат с ботом. Закрой окно и открой каталог ещё раз.",
+    };
+
+    let openedProduct = null;
+    // Имя бота приходит в catalog.json: по нему кнопка «Хочу купить» открывает чат с ботом.
+    let botUsername = "";
+
+    if (telegram) {
+      telegram.ready();
+      telegram.expand();
+      // Шапка и фон Telegram вокруг окна — белые, как страница.
+      telegram.setHeaderColor("#ffffff");
+      telegram.setBackgroundColor("#ffffff");
+      telegram.BackButton.onClick(closeDetail);
+    }
+
+    function showMessage(text) {
+      document.getElementById("message").textContent = text;
+    }
+
+    function alertUser(text) {
+      if (telegram) telegram.showAlert(text); else alert(text);
+    }
+
+    // Карточку собираем через textContent, а не innerHTML: так текст из базы не может
+    // случайно превратиться в код страницы.
+    function createCard(product) {
+      const card = document.createElement("article");
+      card.className = "card";
+      const photo = document.createElement("img");
+      photo.src = product.photo_url;
+      photo.alt = product.title;
+      photo.loading = "lazy";
+      const info = document.createElement("div");
+      info.className = "info";
+      const title = document.createElement("p");
+      title.className = "title";
+      title.textContent = product.title;
+      const price = document.createElement("div");
+      price.className = "price";
+      price.textContent = product.price;
+      info.append(title, price);
+      card.append(photo, info);
+      card.addEventListener("click", () => openDetail(product));
+      return card;
+    }
+
+    function openDetail(product) {
+      openedProduct = product;
+      document.getElementById("detail-photo").src = product.photo_url;
+      document.getElementById("detail-photo").alt = product.title;
+      document.getElementById("detail-title").textContent = product.title;
+      document.getElementById("detail-price").textContent = product.price;
+      document.getElementById("detail-description").textContent = product.description;
+      const detail = document.getElementById("detail");
+      detail.classList.add("open");
+      detail.setAttribute("aria-hidden", "false");
+      detail.scrollTop = 0;
+      if (telegram) telegram.BackButton.show();
+    }
+
+    function closeDetail() {
+      openedProduct = null;
+      const detail = document.getElementById("detail");
+      detail.classList.remove("open");
+      detail.setAttribute("aria-hidden", "true");
+      if (telegram) telegram.BackButton.hide();
+    }
+
+    // «Хочу купить» открывает чат с ботом по ссылке t.me/бот?start=buy_12.
+    // Бот покажет товар, спросит подтверждение и отправит заявку админам.
+    // Так серверу каталога не нужно принимать заявки: хватает файлов на GitHub Pages.
+    function buy(product) {
+      if (!botUsername) {
+        alertUser(texts.noBot);
+        return;
+      }
+      const link = "https://t.me/" + botUsername + "?start=buy_" + product.id;
+      if (telegram) {
+        telegram.openTelegramLink(link);
+        telegram.close();
+      } else {
+        window.open(link, "_blank");
+      }
+    }
+
+    document.getElementById("detail-back").addEventListener("click", closeDetail);
+    document.getElementById("detail-buy").addEventListener("click", () => {
+      if (openedProduct) buy(openedProduct);
+    });
+
+    async function loadCatalog() {
+      try {
+        // cache: "no-store" — всегда свежий список, а не сохранённый браузером.
+        const response = await fetch("catalog.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("bad status");
+        const catalog = await response.json();
+        botUsername = catalog.bot_username;
+        const products = catalog.products;
+        const grid = document.getElementById("grid");
+        grid.replaceChildren(...products.map(createCard));
+        showMessage(products.length ? "" : texts.empty);
+      } catch (error) {
+        showMessage(texts.loadFailed);
+      }
+    }
+
+    loadCatalog();
+  </script>
+</body>
+</html>
