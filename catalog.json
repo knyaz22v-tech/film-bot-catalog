@@ -2,6 +2,13 @@
   "bot_username": "film1_friend_bot",
   "products": [
     {
+      "id": 3,
+      "title": "Тест",
+      "price": "2 000 ₽",
+      "description": "Оо",
+      "photo_url": "photos/3.jpg"
+    },
+    {
       "id": 2,
       "title": "Canon a35",
       "price": "25 000 ₽",
