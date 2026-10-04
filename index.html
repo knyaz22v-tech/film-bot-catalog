@@ -87,8 +87,14 @@
       price.className = "price";
       price.textContent = product.price;
       info.append(title, price);
-      card.append(photo, info);
-      addHoldPreview(card, photo, product);
+      // Фото в рамке: поверх него при зажатии плавно проявляется следующее фото и видны точки.
+      const photoBox = document.createElement("div");
+      photoBox.className = "card-photo";
+      const dots = document.createElement("div");
+      dots.className = "card-dots";
+      photoBox.append(photo, dots);
+      card.append(photoBox, info);
+      addHoldPreview(card, photoBox, photo, dots, product);
       return card;
     }
 
@@ -141,30 +147,58 @@
 
     // --- Зажатие карточки: просмотр фото прямо в списке ---
     // Пока палец (или кнопка мышки) зажаты на карточке, фото плавно становится цветным
-    // и каждые 2 секунды меняется на следующее: 1 → 2 → 3 → снова 1.
-    // Отпустили — снова обложка в ЧБ. Короткое нажатие открывает карточку товара,
+    // и каждую секунду плавно сменяется следующим: 1 → 2 → 3 → снова 1.
+    // Маленькие точки внизу фото показывают, сколько всего фото и какое сейчас.
+    // Отпустили — плавно возвращается обложка в ЧБ. Короткое нажатие открывает карточку товара,
     // а зажатие дольше полсекунды — нет: это просто просмотр фото.
-    const PHOTO_CHANGE_MS = 2000;
+    const PHOTO_CHANGE_MS = 1000;
+    const PHOTO_FADE_MS = 400; // столько длится плавная смена фото (то же время — в style.css)
     const LONG_PRESS_MS = 500;
 
-    function addHoldPreview(card, photo, product) {
+    // Плавная смена: новое фото проявляется поверх текущего, потом занимает его место.
+    function fadeToPhoto(photoBox, photo, url) {
+      if (photo.getAttribute("src") === url) return;
+      const next = document.createElement("img");
+      next.className = "next";
+      next.alt = photo.alt;
+      next.src = url;
+      photoBox.insertBefore(next, photo.nextSibling);
+      // Видимость включаем на следующем кадре — иначе браузер не покажет переход.
+      requestAnimationFrame(() => requestAnimationFrame(() => next.classList.add("shown")));
+      setTimeout(() => {
+        photo.src = url;
+        // Убираем верхнее фото, только когда нижнее уже готово, — так не будет мигания.
+        photo.decode().catch(() => {}).finally(() => next.remove());
+      }, PHOTO_FADE_MS);
+    }
+
+    function addHoldPreview(card, photoBox, photo, dots, product) {
       const urls = product.photos && product.photos.length ? product.photos : [product.photo_url];
       let pressedAt = 0; // когда зажали; 0 — сейчас не зажато
       let timer = null;
       let index = 0;
       let wasLongPress = false;
 
+      // Точки по числу фото. Если фото одно, точек нет.
+      if (urls.length > 1) dots.replaceChildren(...urls.map(() => document.createElement("span")));
+
+      function markDot() {
+        Array.from(dots.children).forEach((dot, dotIndex) => dot.classList.toggle("active", dotIndex === index));
+      }
+
       function startHold(event) {
         if (event.pointerType === "mouse" && event.button !== 0) return; // только левая кнопка
         pressedAt = Date.now();
         wasLongPress = false;
         index = 0;
-        card.classList.add("in-color");
+        markDot();
+        card.classList.add("in-color", "holding");
         urls.slice(1).forEach((url) => { new Image().src = url; }); // заранее загружаем остальные фото
         if (urls.length > 1) {
           timer = setInterval(() => {
             index = (index + 1) % urls.length;
-            photo.src = urls[index];
+            markDot();
+            fadeToPhoto(photoBox, photo, urls[index]);
           }, PHOTO_CHANGE_MS);
         }
       }
@@ -175,8 +209,11 @@
         pressedAt = 0;
         clearInterval(timer);
         timer = null;
-        card.classList.remove("in-color");
-        photo.src = urls[0]; // снова обложка
+        card.classList.remove("in-color", "holding");
+        if (index !== 0) {
+          index = 0;
+          fadeToPhoto(photoBox, photo, urls[0]); // плавно возвращаем обложку
+        }
       }
 
       card.addEventListener("pointerdown", startHold);
