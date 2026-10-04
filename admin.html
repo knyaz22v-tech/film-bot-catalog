@@ -17,6 +17,7 @@
 
   <div class="toolbar">
     <button id="add" class="primary" type="button">+ Добавить фотоаппарат</button>
+    <button id="open-categories" type="button">Категории</button>
   </div>
 
   <main>
@@ -37,6 +38,9 @@
         </label>
         <label>Описание
           <textarea id="field-description" name="description" maxlength="900" required></textarea>
+        </label>
+        <label>Категория
+          <select id="field-category" name="category_id"></select>
         </label>
         <!-- Фото товара (до 5): первое — обложка, крестик удаляет фото. -->
         <div id="photos-block">
@@ -62,6 +66,25 @@
     </div>
     <div class="actions">
       <button id="editor-back" class="back" type="button">Назад</button>
+    </div>
+  </section>
+
+  <!-- Категории: вкладки в каталоге. Добавить, переименовать, поменять порядок, удалить. -->
+  <section id="categories" class="detail" aria-hidden="true">
+    <div class="body">
+      <h2>Категории</h2>
+      <p class="hint">Категории — это вкладки над товарами в каталоге. Пустые категории клиенты не видят.</p>
+      <form id="category-form" class="form category-add">
+        <label>Новая категория
+          <input id="field-category-title" maxlength="40" placeholder="Например: Объективы" required>
+        </label>
+        <button class="primary" type="submit">+ Добавить категорию</button>
+      </form>
+      <div id="category-list" class="list category-list"></div>
+      <div id="category-message" class="message"></div>
+    </div>
+    <div class="actions">
+      <button id="categories-back" class="back" type="button">Назад</button>
     </div>
   </section>
 
@@ -98,6 +121,16 @@
       confirmDeletePhoto: "Удалить это фото? Вернуть его не получится.",
       lastPhoto: "Это единственное фото товара. Сначала добавь другое.",
       cover: "обложка",
+      noCategory: "без категории",
+      noCategories: "Категорий пока нет. Добавь первую — например, «Камеры».",
+      productsCount: (count) => "Товаров: " + count,
+      saveCategory: "Сохранить",
+      deleteCategory: "Удалить",
+      moveUp: "Левее",
+      moveDown: "Правее",
+      confirmDeleteCategory: (title) => "Удалить категорию «" + title + "»?",
+      categoryNotEmpty: (title, count) =>
+        "В категории «" + title + "» есть товары (" + count + "). Сначала перенеси их в другую категорию, потом удаляй.",
       noPhoto: "фото скрыто",
       visible: "видят клиенты",
       hidden: "скрыт",
@@ -105,6 +138,7 @@
     };
 
     let products = [];
+    let categories = []; // по порядку вкладок: {id, title, products — сколько товаров}
     let editing = null; // товар, который сейчас открыт (null — новый товар)
 
     if (telegram) {
@@ -112,7 +146,7 @@
       telegram.expand();
       telegram.setHeaderColor("#ffffff");
       telegram.setBackgroundColor("#ffffff");
-      telegram.BackButton.onClick(closeEditor);
+      telegram.BackButton.onClick(goBack);
     }
 
     function alertUser(text) {
@@ -188,7 +222,11 @@
       const badge = document.createElement("span");
       badge.className = product.is_active ? "badge" : "badge hidden";
       badge.textContent = product.is_active ? texts.visible : texts.hidden;
-      info.append(title, price, badge);
+      const category = document.createElement("span");
+      category.className = product.category_id === null || product.category_id === undefined
+        ? "badge hidden" : "badge";
+      category.textContent = categoryTitle(product.category_id);
+      info.append(title, price, badge, category);
       row.append(photo, info);
       row.addEventListener("click", () => openEditor(product));
       return row;
@@ -200,8 +238,11 @@
           ? await fetch("api/admin/products", { headers: { "X-Admin-Panel": "1" }, cache: "no-store" })
           : await fetch("admin.json", { cache: "no-store" });
         if (!response.ok) throw new Error("bad status");
-        products = (await response.json()).products;
+        const data = await response.json();
+        products = data.products;
+        categories = data.categories || [];
         document.getElementById("list").replaceChildren(...products.map(createRow));
+        renderCategories();
         showMessage(products.length ? "" : texts.empty);
       } catch (error) {
         showMessage(texts.loadFailed);
@@ -279,6 +320,7 @@
       document.getElementById("field-title").value = isNew ? "" : product.title;
       document.getElementById("field-price").value = isNew ? "" : product.price_value;
       document.getElementById("field-description").value = isNew ? "" : product.description;
+      fillCategorySelect(isNew ? null : product.category_id);
       document.getElementById("field-photo").value = "";
       document.getElementById("field-cover").value = "";
       renderThumbs(product);
@@ -320,6 +362,9 @@
         title: document.getElementById("field-title").value,
         price: document.getElementById("field-price").value,
         description: document.getElementById("field-description").value,
+        // Пустой выбор — «без категории» (null), иначе номер категории.
+        category_id: document.getElementById("field-category").value
+          ? Number(document.getElementById("field-category").value) : null,
       };
     }
 
@@ -336,6 +381,7 @@
       data.append("title", fields.title);
       data.append("price", fields.price);
       data.append("description", fields.description);
+      data.append("category_id", fields.category_id === null ? "" : String(fields.category_id));
       // Новый товар: обложка идёт первой, за ней остальные фото — в таком порядке их и сохранит бот.
       const cover = document.getElementById("field-cover").files[0];
       if (editing === null && !cover) {
@@ -372,6 +418,123 @@
         else sendToBot({ action: "delete", id: product.id });
       });
     });
+
+    // --- Категории ---
+
+    function categoryTitle(categoryId) {
+      const category = categories.find((item) => item.id === categoryId);
+      return category ? category.title : texts.noCategory;
+    }
+
+    // Список «Категория» в редакторе: «без категории» и все категории.
+    function fillCategorySelect(selectedId) {
+      const select = document.getElementById("field-category");
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = texts.noCategory;
+      select.replaceChildren(empty, ...categories.map((category) => {
+        const option = document.createElement("option");
+        option.value = String(category.id);
+        option.textContent = category.title;
+        return option;
+      }));
+      select.value = selectedId === null || selectedId === undefined ? "" : String(selectedId);
+    }
+
+    // Действие с категорией: на компьютере — запрос к боту, в Telegram — сообщение боту.
+    function categoryAction(action, category, extra) {
+      if (isLocal) {
+        const data = new FormData();
+        Object.entries(extra || {}).forEach(([key, value]) => data.append(key, value));
+        const paths = {
+          category_add: "api/admin/categories",
+          category_rename: "api/admin/categories/" + (category && category.id),
+          category_delete: "api/admin/categories/" + (category && category.id) + "/delete",
+          category_move: "api/admin/categories/" + (category && category.id) + "/move",
+        };
+        callLocal(paths[action], data);
+      } else {
+        sendToBot({ action, category_id: category ? category.id : undefined, ...(extra || {}) });
+      }
+    }
+
+    function smallButton(text, onClick, className) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = text;
+      if (className) button.className = className;
+      button.addEventListener("click", onClick);
+      return button;
+    }
+
+    // Строка категории: название можно поправить прямо в поле, рядом — кнопки.
+    function createCategoryRow(category, index) {
+      const row = document.createElement("div");
+      row.className = "category-row";
+      const input = document.createElement("input");
+      input.value = category.title;
+      input.maxLength = 40;
+      const count = document.createElement("span");
+      count.className = "count";
+      count.textContent = texts.productsCount(category.products);
+      const buttons = document.createElement("div");
+      buttons.className = "category-buttons";
+      const up = smallButton(texts.moveUp, () => categoryAction("category_move", category, { direction: "up" }));
+      up.disabled = index === 0;
+      const down = smallButton(texts.moveDown, () => categoryAction("category_move", category, { direction: "down" }));
+      down.disabled = index === categories.length - 1;
+      buttons.append(
+        up,
+        down,
+        smallButton(texts.saveCategory, () => categoryAction("category_rename", category, { title: input.value })),
+        smallButton(texts.deleteCategory, () => {
+          if (category.products > 0) {
+            alertUser(texts.categoryNotEmpty(category.title, category.products));
+            return;
+          }
+          confirmUser(texts.confirmDeleteCategory(category.title), (agreed) => {
+            if (agreed) categoryAction("category_delete", category);
+          });
+        }, "danger"),
+      );
+      row.append(input, count, buttons);
+      return row;
+    }
+
+    function renderCategories() {
+      document.getElementById("category-list").replaceChildren(...categories.map(createCategoryRow));
+      document.getElementById("category-message").textContent = categories.length ? "" : texts.noCategories;
+    }
+
+    function openCategories() {
+      renderCategories();
+      document.getElementById("field-category-title").value = "";
+      const screen = document.getElementById("categories");
+      screen.classList.add("open");
+      screen.setAttribute("aria-hidden", "false");
+      screen.scrollTop = 0;
+      if (telegram) telegram.BackButton.show();
+    }
+
+    function closeCategories() {
+      const screen = document.getElementById("categories");
+      screen.classList.remove("open");
+      screen.setAttribute("aria-hidden", "true");
+      if (telegram) telegram.BackButton.hide();
+    }
+
+    // Кнопка «Назад» в шапке Telegram: закрывает редактор, а если он не открыт — экран категорий.
+    function goBack() {
+      if (document.getElementById("editor").classList.contains("open")) closeEditor();
+      else closeCategories();
+    }
+
+    document.getElementById("category-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      categoryAction("category_add", null, { title: document.getElementById("field-category-title").value });
+    });
+    document.getElementById("open-categories").addEventListener("click", openCategories);
+    document.getElementById("categories-back").addEventListener("click", closeCategories);
 
     document.getElementById("add").addEventListener("click", () => openEditor(null));
     document.getElementById("editor-back").addEventListener("click", closeEditor);

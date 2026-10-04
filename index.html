@@ -15,6 +15,9 @@
     <p>Плёночные камеры от «Плёночного друга»</p>
   </header>
 
+  <!-- Вкладки категорий: «Все» и по одной на категорию. Если категорий нет — строки не видно. -->
+  <nav id="tabs" class="tabs" hidden></nav>
+
   <main>
     <div id="grid" class="grid"></div>
     <div id="message" class="message">Загружаю каталог…</div>
@@ -44,6 +47,7 @@
     const telegram = window.Telegram ? window.Telegram.WebApp : null;
     const texts = {
       empty: "Каталог пока пуст. Загляни чуть позже!",
+      all: "Все",
       loadFailed: "Не получилось загрузить каталог. Закрой окно и открой каталог ещё раз.",
       noBot: "Не получилось открыть чат с ботом. Закрой окно и открой каталог ещё раз.",
     };
@@ -276,6 +280,38 @@
       if (openedProduct) buy(openedProduct);
     });
 
+    // --- Вкладки категорий ---
+    // Нажали вкладку — в списке остаются только товары этой категории. «Все» — все товары.
+
+    let allProducts = [];
+    let selectedCategory = null; // null — вкладка «Все»
+
+    function showProducts() {
+      const products = selectedCategory === null
+        ? allProducts
+        : allProducts.filter((product) => product.category_id === selectedCategory);
+      document.getElementById("grid").replaceChildren(...products.map(createCard));
+      showMessage(products.length ? "" : texts.empty);
+    }
+
+    function renderTabs(categories) {
+      const tabs = document.getElementById("tabs");
+      tabs.hidden = categories.length === 0;
+      const items = [{ id: null, title: texts.all }, ...categories];
+      tabs.replaceChildren(...items.map((category) => {
+        const tab = document.createElement("button");
+        tab.type = "button";
+        tab.className = category.id === selectedCategory ? "tab active" : "tab";
+        tab.textContent = category.title;
+        tab.addEventListener("click", () => {
+          selectedCategory = category.id;
+          renderTabs(categories);
+          showProducts();
+        });
+        return tab;
+      }));
+    }
+
     async function loadCatalog() {
       try {
         // cache: "no-store" — всегда свежий список, а не сохранённый браузером.
@@ -283,10 +319,9 @@
         if (!response.ok) throw new Error("bad status");
         const catalog = await response.json();
         botUsername = catalog.bot_username;
-        const products = catalog.products;
-        const grid = document.getElementById("grid");
-        grid.replaceChildren(...products.map(createCard));
-        showMessage(products.length ? "" : texts.empty);
+        allProducts = catalog.products;
+        renderTabs(catalog.categories || []);
+        showProducts();
       } catch (error) {
         showMessage(texts.loadFailed);
       }

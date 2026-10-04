@@ -1,4 +1,5 @@
 {
+  "categories": [],
   "products": [
     {
       "id": 4,
@@ -7,6 +8,7 @@
       "price_value": 25000,
       "description": "Тест",
       "is_active": true,
+      "category_id": null,
       "photo_url": "photos/4_8.jpg",
       "photos": [
         {
@@ -34,6 +36,7 @@
       "price_value": 25000,
       "description": "Тестовое описание",
       "is_active": true,
+      "category_id": null,
       "photo_url": "photos/2_2.jpg",
       "photos": [
         {
@@ -49,6 +52,7 @@
       "price_value": 25000,
       "description": "Крутой фотик для князя",
       "is_active": true,
+      "category_id": null,
       "photo_url": "photos/1_1.jpg",
       "photos": [
         {

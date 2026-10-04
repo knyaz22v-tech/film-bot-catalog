@@ -1,11 +1,13 @@
 {
   "bot_username": "film1_friend_bot",
+  "categories": [],
   "products": [
     {
       "id": 4,
       "title": "Olympus",
       "price": "25 000 ₽",
       "description": "Тест",
+      "category_id": null,
       "photo_url": "photos/4_8.jpg",
       "photos": [
         "photos/4_8.jpg",
@@ -19,6 +21,7 @@
       "title": "Canon a35",
       "price": "25 000 ₽",
       "description": "Тестовое описание",
+      "category_id": null,
       "photo_url": "photos/2_2.jpg",
       "photos": [
         "photos/2_2.jpg"
@@ -29,6 +32,7 @@
       "title": "Canon AE-1 с объективом 50 мм.",
       "price": "25 000 ₽",
       "description": "Крутой фотик для князя",
+      "category_id": null,
       "photo_url": "photos/1_1.jpg",
       "photos": [
         "photos/1_1.jpg"
