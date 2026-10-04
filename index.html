@@ -88,8 +88,7 @@
       price.textContent = product.price;
       info.append(title, price);
       card.append(photo, info);
-      card.addEventListener("click", () => openDetail(product));
-      addColorOnTouch(card);
+      addHoldPreview(card, photo, product);
       return card;
     }
 
@@ -140,16 +139,60 @@
     document.getElementById("gallery-prev").addEventListener("click", () => scrollPhotos(-1));
     document.getElementById("gallery-next").addEventListener("click", () => scrollPhotos(1));
 
-    // На телефоне мышки нет: пока палец лежит на карточке, фото плавно становится цветным,
-    // а когда палец убран или страницу листают — снова чёрно-белым.
-    function addColorOnTouch(card) {
-      const removeColor = () => card.classList.remove("in-color");
-      card.addEventListener("touchstart", () => card.classList.add("in-color"), { passive: true });
-      card.addEventListener("touchend", removeColor);
-      card.addEventListener("touchcancel", removeColor);
-      card.addEventListener("touchmove", removeColor, { passive: true });
+    // --- Зажатие карточки: просмотр фото прямо в списке ---
+    // Пока палец (или кнопка мышки) зажаты на карточке, фото плавно становится цветным
+    // и каждые 2 секунды меняется на следующее: 1 → 2 → 3 → снова 1.
+    // Отпустили — снова обложка в ЧБ. Короткое нажатие открывает карточку товара,
+    // а зажатие дольше полсекунды — нет: это просто просмотр фото.
+    const PHOTO_CHANGE_MS = 2000;
+    const LONG_PRESS_MS = 500;
+
+    function addHoldPreview(card, photo, product) {
+      const urls = product.photos && product.photos.length ? product.photos : [product.photo_url];
+      let pressedAt = 0; // когда зажали; 0 — сейчас не зажато
+      let timer = null;
+      let index = 0;
+      let wasLongPress = false;
+
+      function startHold(event) {
+        if (event.pointerType === "mouse" && event.button !== 0) return; // только левая кнопка
+        pressedAt = Date.now();
+        wasLongPress = false;
+        index = 0;
+        card.classList.add("in-color");
+        urls.slice(1).forEach((url) => { new Image().src = url; }); // заранее загружаем остальные фото
+        if (urls.length > 1) {
+          timer = setInterval(() => {
+            index = (index + 1) % urls.length;
+            photo.src = urls[index];
+          }, PHOTO_CHANGE_MS);
+        }
+      }
+
+      function stopHold() {
+        if (!pressedAt) return;
+        wasLongPress = Date.now() - pressedAt >= LONG_PRESS_MS;
+        pressedAt = 0;
+        clearInterval(timer);
+        timer = null;
+        card.classList.remove("in-color");
+        photo.src = urls[0]; // снова обложка
+      }
+
+      card.addEventListener("pointerdown", startHold);
+      // Отпустили палец, ушли мышкой с карточки или начали листать страницу — заканчиваем просмотр.
+      card.addEventListener("pointerup", stopHold);
+      card.addEventListener("pointercancel", stopHold);
+      card.addEventListener("pointerleave", stopHold);
       // Долгое нажатие не должно открывать меню телефона поверх карточки.
       card.addEventListener("contextmenu", (event) => event.preventDefault());
+      card.addEventListener("click", () => {
+        if (wasLongPress) {
+          wasLongPress = false; // это было зажатие для просмотра фото — карточку не открываем
+          return;
+        }
+        openDetail(product);
+      });
     }
 
     function openDetail(product) {
