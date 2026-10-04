@@ -2,20 +2,6 @@
   "bot_username": "film1_friend_bot",
   "products": [
     {
-      "id": 3,
-      "title": "Тест",
-      "price": "2 000 ₽",
-      "description": "Оо",
-      "photo_url": "photos/3_3.jpg",
-      "photos": [
-        "photos/3_3.jpg",
-        "photos/3_4.jpg",
-        "photos/3_5.jpg",
-        "photos/3_6.jpg",
-        "photos/3_7.jpg"
-      ]
-    },
-    {
       "id": 2,
       "title": "Canon a35",
       "price": "25 000 ₽",

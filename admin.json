@@ -6,28 +6,28 @@
       "price": "2 000 ₽",
       "price_value": 2000,
       "description": "Оо",
-      "is_active": true,
-      "photo_url": "photos/3_3.jpg",
+      "is_active": false,
+      "photo_url": null,
       "photos": [
         {
           "id": 3,
-          "url": "photos/3_3.jpg"
+          "url": null
         },
         {
           "id": 4,
-          "url": "photos/3_4.jpg"
+          "url": null
         },
         {
           "id": 5,
-          "url": "photos/3_5.jpg"
+          "url": null
         },
         {
           "id": 6,
-          "url": "photos/3_6.jpg"
+          "url": null
         },
         {
           "id": 7,
-          "url": "photos/3_7.jpg"
+          "url": null
         }
       ]
     },
