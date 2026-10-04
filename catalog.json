@@ -2,6 +2,13 @@
   "bot_username": "film1_friend_bot",
   "products": [
     {
+      "id": 2,
+      "title": "Canon a35",
+      "price": "25 000 ₽",
+      "description": "Тестовое описание",
+      "photo_url": "photos/2.jpg"
+    },
+    {
       "id": 1,
       "title": "Canon AE-1 с объективом 50 мм.",
       "price": "25 000 ₽",
