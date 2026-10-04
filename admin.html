@@ -26,7 +26,6 @@
 
   <!-- Редактор товара поверх списка (как карточка в каталоге). -->
   <section id="editor" class="detail" aria-hidden="true">
-    <img id="editor-photo" alt="">
     <div class="body">
       <h2 id="editor-heading"></h2>
       <form id="form" class="form">
@@ -39,14 +38,19 @@
         <label>Описание
           <textarea id="field-description" name="description" maxlength="900" required></textarea>
         </label>
-        <!-- Фото из файла — только на компьютере (локальный режим). -->
-        <label id="photo-field">Фото
-          <input id="field-photo" name="photo" type="file" accept="image/jpeg,image/png">
+        <!-- Фото товара (до 5): первое — обложка, крестик удаляет фото. -->
+        <div id="photos-block">
+          <p class="field-name">Фото</p>
+          <div id="thumbs" class="thumbs"></div>
+        </div>
+        <!-- Фото из файлов — только на компьютере (локальный режим). Можно выбрать несколько. -->
+        <label id="photo-field">Добавить фото
+          <input id="field-photo" name="photo" type="file" accept="image/jpeg,image/png" multiple>
         </label>
         <p id="photo-hint" class="hint"></p>
         <div class="buttons">
           <button id="save" class="primary" type="submit">Сохранить</button>
-          <button id="change-photo" type="button">Сменить фото</button>
+          <button id="change-photo" type="button">Добавить фото</button>
           <button id="toggle" type="button"></button>
           <button id="delete" class="danger" type="button">Удалить</button>
         </div>
@@ -63,6 +67,8 @@
     //   правки и фото сразу уходят боту через его локальный сервер;
     // - Telegram (открыта кнопкой «🛠 Админ-панель» в чате с ботом) — правки уходят боту
     //   через Telegram (sendData), а фото бот попросит прислать сообщением в чат.
+    // У товара может быть до 5 фото: первое — обложка, остальные клиент листает в карточке.
+    const MAX_PHOTOS = 5;
     const telegram = window.Telegram ? window.Telegram.WebApp : null;
     const isLocal = ["127.0.0.1", "localhost"].includes(location.hostname);
     const inTelegram = !isLocal && telegram && telegram.platform !== "unknown";
@@ -76,10 +82,16 @@
       hide: "Скрыть от клиентов",
       show: "Показать клиентам",
       confirmDelete: (title) => "Удалить «" + title + "» из каталога? Вернуть его не получится.",
-      needPhoto: "Выбери фото фотоаппарата.",
-      photoInChatNew: "Фото пришлёшь в чат с ботом после сохранения.",
-      photoInChatEdit: "Чтобы сменить фото, нажми «Сменить фото» — бот попросит прислать его в чат.",
-      photoLocal: "Можно выбрать новое фото — или оставить прежнее.",
+      needPhoto: "Выбери фото фотоаппарата — от 1 до 5 штук.",
+      photoLocalNew: "Выбери от 1 до 5 фото. Первое станет обложкой.",
+      photoLocalEdit: (free) => "Можно добавить ещё " + free + " фото. Новые встанут после прежних.",
+      photoInChatNew: "Фото (от 1 до 5) пришлёшь в чат с ботом после сохранения.",
+      photoInChatEdit: (free) => "Можно добавить ещё " + free + " фото: нажми «Добавить фото», и бот попросит прислать их в чат.",
+      photosFull: "Фото уже 5 — это максимум. Чтобы добавить новое, удали лишнее крестиком.",
+      tooManyPhotos: (free) => "Можно добавить не больше " + free + " фото.",
+      confirmDeletePhoto: "Удалить это фото? Вернуть его не получится.",
+      lastPhoto: "Это единственное фото товара. Сначала добавь другое.",
+      cover: "обложка",
       noPhoto: "фото скрыто",
       visible: "видят клиенты",
       hidden: "скрыт",
@@ -122,18 +134,21 @@
 
     // Локальный режим: запрос к серверу бота. Заголовок X-Admin-Panel защищает от
     // команд с чужих сайтов: браузер не даст постороннему сайту его поставить.
-    async function callLocal(path, formData) {
+    // reopenId — после успешной правки снова открыть этот товар (например, после удаления фото).
+    async function callLocal(path, formData, reopenId) {
       try {
         const response = await fetch(path, {
           method: "POST",
           headers: { "X-Admin-Panel": "1" },
-          body: formData,
+          body: formData || new FormData(),
         });
         const answer = await response.json();
         alertUser(answer.message);
         if (answer.ok) {
           closeEditor();
           await loadProducts();
+          const reopened = products.find((product) => product.id === reopenId);
+          if (reopened) openEditor(reopened);
         }
       } catch (error) {
         alertUser(texts.networkError);
@@ -189,6 +204,68 @@
 
     // --- Редактор ---
 
+    function photosOf(product) {
+      return product && product.photos ? product.photos : [];
+    }
+
+    // Миниатюры фото товара. Крестик есть, только если фото больше одного:
+    // без фото товар не показать клиентам.
+    function renderThumbs(product) {
+      const photos = photosOf(product);
+      document.getElementById("photos-block").style.display = photos.length ? "block" : "none";
+      document.getElementById("thumbs").replaceChildren(...photos.map((photo, index) => {
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+        let picture;
+        if (photo.url) {
+          picture = document.createElement("img");
+          picture.src = photo.url;
+          picture.alt = product.title;
+        } else {
+          picture = document.createElement("div");
+          picture.className = "no-photo";
+          picture.textContent = texts.noPhoto;
+        }
+        thumb.append(picture);
+        if (photos.length > 1) {
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "remove";
+          remove.textContent = "×";
+          remove.setAttribute("aria-label", "Удалить фото");
+          remove.addEventListener("click", () => deletePhoto(product, photo));
+          thumb.append(remove);
+        }
+        if (index === 0) {
+          const cover = document.createElement("span");
+          cover.className = "cover";
+          cover.textContent = texts.cover;
+          thumb.append(cover);
+        }
+        return thumb;
+      }));
+    }
+
+    function deletePhoto(product, photo) {
+      if (photosOf(product).length < 2) {
+        alertUser(texts.lastPhoto);
+        return;
+      }
+      confirmUser(texts.confirmDeletePhoto, (agreed) => {
+        if (!agreed) return;
+        if (isLocal) {
+          callLocal("api/admin/products/" + product.id + "/photos/" + photo.id + "/delete", null, product.id);
+        } else {
+          sendToBot({ action: "delete_photo", id: product.id, photo_id: photo.id });
+        }
+      });
+    }
+
+    // Сколько фото ещё можно добавить товару (новому — все 5).
+    function freePhotoPlaces(product) {
+      return Math.max(MAX_PHOTOS - photosOf(product).length, 0);
+    }
+
     function openEditor(product) {
       editing = product;
       const isNew = product === null;
@@ -197,17 +274,17 @@
       document.getElementById("field-price").value = isNew ? "" : product.price_value;
       document.getElementById("field-description").value = isNew ? "" : product.description;
       document.getElementById("field-photo").value = "";
+      renderThumbs(product);
 
-      const photo = document.getElementById("editor-photo");
-      photo.style.display = !isNew && product.photo_url ? "block" : "none";
-      if (!isNew && product.photo_url) photo.src = product.photo_url;
-
-      // Фото из файла можно выбрать только на компьютере; в Telegram — прислать в чат.
-      document.getElementById("photo-field").style.display = isLocal ? "block" : "none";
-      document.getElementById("change-photo").style.display = !isLocal && !isNew ? "block" : "none";
-      document.getElementById("photo-hint").textContent = isLocal
-        ? (isNew ? texts.needPhoto : texts.photoLocal)
-        : (isNew ? texts.photoInChatNew : texts.photoInChatEdit);
+      // Фото из файлов можно выбрать только на компьютере; в Telegram — прислать в чат.
+      const free = freePhotoPlaces(product);
+      document.getElementById("photo-field").style.display = isLocal && free > 0 ? "block" : "none";
+      document.getElementById("change-photo").style.display = !isLocal && !isNew && free > 0 ? "block" : "none";
+      let hint;
+      if (free === 0) hint = texts.photosFull;
+      else if (isLocal) hint = isNew ? texts.photoLocalNew : texts.photoLocalEdit(free);
+      else hint = isNew ? texts.photoInChatNew : texts.photoInChatEdit(free);
+      document.getElementById("photo-hint").textContent = hint;
 
       const toggle = document.getElementById("toggle");
       toggle.style.display = isNew ? "none" : "block";
@@ -250,12 +327,17 @@
       data.append("title", fields.title);
       data.append("price", fields.price);
       data.append("description", fields.description);
-      const file = document.getElementById("field-photo").files[0];
-      if (editing === null && !file) {
+      const files = Array.from(document.getElementById("field-photo").files);
+      if (editing === null && files.length === 0) {
         alertUser(texts.needPhoto);
         return;
       }
-      if (file) data.append("photo", file);
+      const free = freePhotoPlaces(editing);
+      if (files.length > free) {
+        alertUser(texts.tooManyPhotos(free));
+        return;
+      }
+      files.forEach((file) => data.append("photo", file));
       callLocal(editing === null ? "api/admin/products" : "api/admin/products/" + editing.id, data);
     });
 
@@ -265,7 +347,7 @@
 
     document.getElementById("toggle").addEventListener("click", () => {
       if (!editing) return;
-      if (isLocal) callLocal("api/admin/products/" + editing.id + "/toggle", new FormData());
+      if (isLocal) callLocal("api/admin/products/" + editing.id + "/toggle");
       else sendToBot({ action: "toggle", id: editing.id });
     });
 
@@ -274,7 +356,7 @@
       const product = editing;
       confirmUser(texts.confirmDelete(product.title), (agreed) => {
         if (!agreed) return;
-        if (isLocal) callLocal("api/admin/products/" + product.id + "/delete", new FormData());
+        if (isLocal) callLocal("api/admin/products/" + product.id + "/delete");
         else sendToBot({ action: "delete", id: product.id });
       });
     });

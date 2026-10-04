@@ -90,6 +90,61 @@ main { padding: 16px; }
   border-bottom: 2px solid var(--line);
   /* В карточке фото цветное: клиент видит реальное состояние камеры. */
 }
+/* Листалка фото в карточке товара: свайп пальцем или стрелки, точки — какое фото открыто. */
+.gallery {
+  position: relative;
+  background: #f2f2f2;
+  border-bottom: 2px solid var(--line);
+}
+.gallery-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.gallery-track::-webkit-scrollbar { display: none; }
+.detail .gallery-track img {
+  flex: 0 0 100%;
+  height: 60vh;
+  max-height: 60vh;
+  scroll-snap-align: center;
+  border-bottom: none;
+}
+.gallery-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 24px;
+  line-height: 1;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+}
+.gallery-arrow.prev { left: 10px; }
+.gallery-arrow.next { right: 10px; }
+.gallery-arrow:disabled { opacity: 0.25; }
+.gallery-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.gallery-dots span {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+}
+.gallery-dots span.active { background: var(--ink); }
+.gallery.single .gallery-arrow, .gallery.single .gallery-dots { display: none; }
 .detail .body { padding: 18px 16px 120px; }
 .detail h2 { margin: 0 0 8px; font-size: 22px; line-height: 1.2; }
 .detail .price {
@@ -186,5 +241,48 @@ button {
 }
 .form textarea { min-height: 140px; resize: vertical; }
 .form .hint { font-size: 13px; color: var(--grey); font-style: italic; margin: 0; }
+.form .field-name { font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 12px; }
 .form .buttons { display: flex; flex-wrap: wrap; gap: 10px; }
 .form .buttons button { flex: 1 1 140px; }
+
+/* Фото товара в админ-панели: миниатюры, у каждой крестик «удалить», первое — обложка. */
+.thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.thumb { position: relative; width: 84px; }
+.thumb img, .thumb .no-photo {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  display: block;
+  border: 1px solid var(--line);
+  background: #eeeeee;
+}
+.thumb .no-photo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--grey);
+  font-style: italic;
+  text-align: center;
+}
+.thumb .remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+}
+.thumb .cover {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
