@@ -1,37 +1,6 @@
 {
   "products": [
     {
-      "id": 3,
-      "title": "Тест",
-      "price": "2 000 ₽",
-      "price_value": 2000,
-      "description": "Оо",
-      "is_active": false,
-      "photo_url": null,
-      "photos": [
-        {
-          "id": 3,
-          "url": null
-        },
-        {
-          "id": 4,
-          "url": null
-        },
-        {
-          "id": 5,
-          "url": null
-        },
-        {
-          "id": 6,
-          "url": null
-        },
-        {
-          "id": 7,
-          "url": null
-        }
-      ]
-    },
-    {
       "id": 2,
       "title": "Canon a35",
       "price": "25 000 ₽",
