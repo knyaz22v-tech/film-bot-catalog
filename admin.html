@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Админ-панель каталога</title>
+  <!-- Официальный скрипт Telegram для Mini App. -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Те же стили, что у каталога: дизайн совпадает. -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Админ-панель</h1>
+    <p>Каталог фотоаппаратов</p>
+  </header>
+
+  <div class="toolbar">
+    <button id="add" class="primary" type="button">+ Добавить фотоаппарат</button>
+  </div>
+
+  <main>
+    <div id="list" class="list"></div>
+    <div id="message" class="message">Загружаю товары…</div>
+  </main>
+
+  <!-- Редактор товара поверх списка (как карточка в каталоге). -->
+  <section id="editor" class="detail" aria-hidden="true">
+    <img id="editor-photo" alt="">
+    <div class="body">
+      <h2 id="editor-heading"></h2>
+      <form id="form" class="form">
+        <label>Название
+          <input id="field-title" name="title" maxlength="100" required>
+        </label>
+        <label>Цена, ₽
+          <input id="field-price" name="price" inputmode="numeric" required>
+        </label>
+        <label>Описание
+          <textarea id="field-description" name="description" maxlength="900" required></textarea>
+        </label>
+        <!-- Фото из файла — только на компьютере (локальный режим). -->
+        <label id="photo-field">Фото
+          <input id="field-photo" name="photo" type="file" accept="image/jpeg,image/png">
+        </label>
+        <p id="photo-hint" class="hint"></p>
+        <div class="buttons">
+          <button id="save" class="primary" type="submit">Сохранить</button>
+          <button id="change-photo" type="button">Сменить фото</button>
+          <button id="toggle" type="button"></button>
+          <button id="delete" class="danger" type="button">Удалить</button>
+        </div>
+      </form>
+    </div>
+    <div class="actions">
+      <button id="editor-back" class="back" type="button">Назад</button>
+    </div>
+  </section>
+
+  <script>
+    // Панель работает в двух режимах:
+    // - локальный (открыта на компьютере, где работает бот: http://127.0.0.1:8080/admin.html) —
+    //   правки и фото сразу уходят боту через его локальный сервер;
+    // - Telegram (открыта кнопкой «🛠 Админ-панель» в чате с ботом) — правки уходят боту
+    //   через Telegram (sendData), а фото бот попросит прислать сообщением в чат.
+    const telegram = window.Telegram ? window.Telegram.WebApp : null;
+    const isLocal = ["127.0.0.1", "localhost"].includes(location.hostname);
+    const inTelegram = !isLocal && telegram && telegram.platform !== "unknown";
+
+    const texts = {
+      loadFailed: "Не получилось загрузить товары. Закрой панель и открой её ещё раз.",
+      empty: "Товаров пока нет. Нажми «Добавить фотоаппарат».",
+      notInTelegram: "Открой панель кнопкой «🛠 Админ-панель» внизу чата с ботом (команда /admin).",
+      newHeading: "Новый фотоаппарат",
+      editHeading: "Изменить товар",
+      hide: "Скрыть от клиентов",
+      show: "Показать клиентам",
+      confirmDelete: (title) => "Удалить «" + title + "» из каталога? Вернуть его не получится.",
+      needPhoto: "Выбери фото фотоаппарата.",
+      photoInChatNew: "Фото пришлёшь в чат с ботом после сохранения.",
+      photoInChatEdit: "Чтобы сменить фото, нажми «Сменить фото» — бот попросит прислать его в чат.",
+      photoLocal: "Можно выбрать новое фото — или оставить прежнее.",
+      noPhoto: "фото скрыто",
+      visible: "видят клиенты",
+      hidden: "скрыт",
+      networkError: "Не получилось связаться с ботом. Проверь, что бот запущен.",
+    };
+
+    let products = [];
+    let editing = null; // товар, который сейчас открыт (null — новый товар)
+
+    if (telegram) {
+      telegram.ready();
+      telegram.expand();
+      telegram.setHeaderColor("#ffffff");
+      telegram.setBackgroundColor("#ffffff");
+      telegram.BackButton.onClick(closeEditor);
+    }
+
+    function alertUser(text) {
+      if (inTelegram) telegram.showAlert(text); else alert(text);
+    }
+
+    function confirmUser(text, callback) {
+      if (inTelegram) telegram.showConfirm(text, callback); else callback(confirm(text));
+    }
+
+    function showMessage(text) {
+      document.getElementById("message").textContent = text;
+    }
+
+    // --- Отправка правок боту ---
+
+    // Telegram-режим: данные уходят боту сообщением, окно панели закрывается само.
+    function sendToBot(data) {
+      if (!inTelegram) {
+        alertUser(texts.notInTelegram);
+        return;
+      }
+      telegram.sendData(JSON.stringify(data));
+    }
+
+    // Локальный режим: запрос к серверу бота. Заголовок X-Admin-Panel защищает от
+    // команд с чужих сайтов: браузер не даст постороннему сайту его поставить.
+    async function callLocal(path, formData) {
+      try {
+        const response = await fetch(path, {
+          method: "POST",
+          headers: { "X-Admin-Panel": "1" },
+          body: formData,
+        });
+        const answer = await response.json();
+        alertUser(answer.message);
+        if (answer.ok) {
+          closeEditor();
+          await loadProducts();
+        }
+      } catch (error) {
+        alertUser(texts.networkError);
+      }
+    }
+
+    // --- Список товаров ---
+
+    function createRow(product) {
+      const row = document.createElement("article");
+      row.className = "row";
+      let photo;
+      if (product.photo_url) {
+        photo = document.createElement("img");
+        photo.src = product.photo_url;
+        photo.alt = product.title;
+        photo.loading = "lazy";
+      } else {
+        photo = document.createElement("div");
+        photo.className = "no-photo";
+        photo.textContent = texts.noPhoto;
+      }
+      const info = document.createElement("div");
+      info.className = "info";
+      const title = document.createElement("p");
+      title.className = "title";
+      title.textContent = product.title;
+      const price = document.createElement("div");
+      price.className = "price";
+      price.textContent = product.price;
+      const badge = document.createElement("span");
+      badge.className = product.is_active ? "badge" : "badge hidden";
+      badge.textContent = product.is_active ? texts.visible : texts.hidden;
+      info.append(title, price, badge);
+      row.append(photo, info);
+      row.addEventListener("click", () => openEditor(product));
+      return row;
+    }
+
+    async function loadProducts() {
+      try {
+        const response = isLocal
+          ? await fetch("api/admin/products", { headers: { "X-Admin-Panel": "1" }, cache: "no-store" })
+          : await fetch("admin.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("bad status");
+        products = (await response.json()).products;
+        document.getElementById("list").replaceChildren(...products.map(createRow));
+        showMessage(products.length ? "" : texts.empty);
+      } catch (error) {
+        showMessage(texts.loadFailed);
+      }
+    }
+
+    // --- Редактор ---
+
+    function openEditor(product) {
+      editing = product;
+      const isNew = product === null;
+      document.getElementById("editor-heading").textContent = isNew ? texts.newHeading : texts.editHeading;
+      document.getElementById("field-title").value = isNew ? "" : product.title;
+      document.getElementById("field-price").value = isNew ? "" : product.price_value;
+      document.getElementById("field-description").value = isNew ? "" : product.description;
+      document.getElementById("field-photo").value = "";
+
+      const photo = document.getElementById("editor-photo");
+      photo.style.display = !isNew && product.photo_url ? "block" : "none";
+      if (!isNew && product.photo_url) photo.src = product.photo_url;
+
+      // Фото из файла можно выбрать только на компьютере; в Telegram — прислать в чат.
+      document.getElementById("photo-field").style.display = isLocal ? "block" : "none";
+      document.getElementById("change-photo").style.display = !isLocal && !isNew ? "block" : "none";
+      document.getElementById("photo-hint").textContent = isLocal
+        ? (isNew ? texts.needPhoto : texts.photoLocal)
+        : (isNew ? texts.photoInChatNew : texts.photoInChatEdit);
+
+      const toggle = document.getElementById("toggle");
+      toggle.style.display = isNew ? "none" : "block";
+      if (!isNew) toggle.textContent = product.is_active ? texts.hide : texts.show;
+      document.getElementById("delete").style.display = isNew ? "none" : "block";
+
+      const editor = document.getElementById("editor");
+      editor.classList.add("open");
+      editor.setAttribute("aria-hidden", "false");
+      editor.scrollTop = 0;
+      if (telegram) telegram.BackButton.show();
+    }
+
+    function closeEditor() {
+      editing = null;
+      const editor = document.getElementById("editor");
+      editor.classList.remove("open");
+      editor.setAttribute("aria-hidden", "true");
+      if (telegram) telegram.BackButton.hide();
+    }
+
+    function formFields() {
+      return {
+        title: document.getElementById("field-title").value,
+        price: document.getElementById("field-price").value,
+        description: document.getElementById("field-description").value,
+      };
+    }
+
+    document.getElementById("form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const fields = formFields();
+      if (!isLocal) {
+        sendToBot(editing === null
+          ? { action: "add", ...fields }
+          : { action: "edit", id: editing.id, ...fields });
+        return;
+      }
+      const data = new FormData();
+      data.append("title", fields.title);
+      data.append("price", fields.price);
+      data.append("description", fields.description);
+      const file = document.getElementById("field-photo").files[0];
+      if (editing === null && !file) {
+        alertUser(texts.needPhoto);
+        return;
+      }
+      if (file) data.append("photo", file);
+      callLocal(editing === null ? "api/admin/products" : "api/admin/products/" + editing.id, data);
+    });
+
+    document.getElementById("change-photo").addEventListener("click", () => {
+      if (editing) sendToBot({ action: "photo", id: editing.id });
+    });
+
+    document.getElementById("toggle").addEventListener("click", () => {
+      if (!editing) return;
+      if (isLocal) callLocal("api/admin/products/" + editing.id + "/toggle", new FormData());
+      else sendToBot({ action: "toggle", id: editing.id });
+    });
+
+    document.getElementById("delete").addEventListener("click", () => {
+      if (!editing) return;
+      const product = editing;
+      confirmUser(texts.confirmDelete(product.title), (agreed) => {
+        if (!agreed) return;
+        if (isLocal) callLocal("api/admin/products/" + product.id + "/delete", new FormData());
+        else sendToBot({ action: "delete", id: product.id });
+      });
+    });
+
+    document.getElementById("add").addEventListener("click", () => openEditor(null));
+    document.getElementById("editor-back").addEventListener("click", closeEditor);
+
+    loadProducts();
+  </script>
+</body>
+</html>
