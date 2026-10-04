@@ -54,6 +54,22 @@ main { padding: 16px; }
   filter: grayscale(1) contrast(1.05);
   border-bottom: 1px solid var(--line);
   background: #eeeeee;
+  /* Плавный переход из ЧБ в цвет и обратно. */
+  transition: filter 0.6s ease;
+  /* Долгое нажатие на фото не открывает меню телефона «Сохранить картинку». */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Наведение мышки (только на устройствах с мышкой) или палец, задержанный на карточке, —
+   фото становится цветным. Класс in-color ставит скрипт каталога при касании. */
+@media (hover: hover) {
+  .card:hover img { filter: none; }
+}
+.card.in-color img { filter: none; }
+/* Если в системе включено «уменьшить движение» — без плавной анимации. */
+@media (prefers-reduced-motion: reduce) {
+  .card img { transition: none; }
 }
 .card .info { padding: 10px; }
 .card .title {

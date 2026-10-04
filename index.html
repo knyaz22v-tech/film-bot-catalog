@@ -89,6 +89,7 @@
       info.append(title, price);
       card.append(photo, info);
       card.addEventListener("click", () => openDetail(product));
+      addColorOnTouch(card);
       return card;
     }
 
@@ -138,6 +139,18 @@
     track.addEventListener("scroll", updateGalleryControls);
     document.getElementById("gallery-prev").addEventListener("click", () => scrollPhotos(-1));
     document.getElementById("gallery-next").addEventListener("click", () => scrollPhotos(1));
+
+    // На телефоне мышки нет: пока палец лежит на карточке, фото плавно становится цветным,
+    // а когда палец убран или страницу листают — снова чёрно-белым.
+    function addColorOnTouch(card) {
+      const removeColor = () => card.classList.remove("in-color");
+      card.addEventListener("touchstart", () => card.classList.add("in-color"), { passive: true });
+      card.addEventListener("touchend", removeColor);
+      card.addEventListener("touchcancel", removeColor);
+      card.addEventListener("touchmove", removeColor, { passive: true });
+      // Долгое нажатие не должно открывать меню телефона поверх карточки.
+      card.addEventListener("contextmenu", (event) => event.preventDefault());
+    }
 
     function openDetail(product) {
       openedProduct = product;
