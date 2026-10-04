@@ -44,7 +44,11 @@
           <div id="thumbs" class="thumbs"></div>
         </div>
         <!-- Фото из файлов — только на компьютере (локальный режим). Можно выбрать несколько. -->
-        <label id="photo-field">Добавить фото
+        <!-- Новый товар: сначала обложка (главное фото), потом остальные фото. -->
+        <label id="cover-field">Обложка
+          <input id="field-cover" type="file" accept="image/jpeg,image/png">
+        </label>
+        <label id="photo-field"><span id="photo-field-name">Добавить фото</span>
           <input id="field-photo" name="photo" type="file" accept="image/jpeg,image/png" multiple>
         </label>
         <p id="photo-hint" class="hint"></p>
@@ -82,8 +86,10 @@
       hide: "Скрыть от клиентов",
       show: "Показать клиентам",
       confirmDelete: (title) => "Удалить «" + title + "» из каталога? Вернуть его не получится.",
-      needPhoto: "Выбери фото фотоаппарата — от 1 до 5 штук.",
-      photoLocalNew: "Выбери от 1 до 5 фото. Первое станет обложкой.",
+      needPhoto: "Сначала выбери обложку — главное фото фотоаппарата.",
+      photoLocalNew: "Сначала выбери обложку — главное фото, его клиенты видят в списке. Потом, если нужно, ещё до 4 фото.",
+      otherPhotos: "Остальные фото",
+      addPhotos: "Добавить фото",
       photoLocalEdit: (free) => "Можно добавить ещё " + free + " фото. Новые встанут после прежних.",
       photoInChatNew: "Фото (от 1 до 5) пришлёшь в чат с ботом после сохранения.",
       photoInChatEdit: (free) => "Можно добавить ещё " + free + " фото: нажми «Добавить фото», и бот попросит прислать их в чат.",
@@ -274,11 +280,14 @@
       document.getElementById("field-price").value = isNew ? "" : product.price_value;
       document.getElementById("field-description").value = isNew ? "" : product.description;
       document.getElementById("field-photo").value = "";
+      document.getElementById("field-cover").value = "";
       renderThumbs(product);
 
       // Фото из файлов можно выбрать только на компьютере; в Telegram — прислать в чат.
       const free = freePhotoPlaces(product);
+      document.getElementById("cover-field").style.display = isLocal && isNew ? "block" : "none";
       document.getElementById("photo-field").style.display = isLocal && free > 0 ? "block" : "none";
+      document.getElementById("photo-field-name").textContent = isNew ? texts.otherPhotos : texts.addPhotos;
       document.getElementById("change-photo").style.display = !isLocal && !isNew && free > 0 ? "block" : "none";
       let hint;
       if (free === 0) hint = texts.photosFull;
@@ -327,11 +336,14 @@
       data.append("title", fields.title);
       data.append("price", fields.price);
       data.append("description", fields.description);
-      const files = Array.from(document.getElementById("field-photo").files);
-      if (editing === null && files.length === 0) {
+      // Новый товар: обложка идёт первой, за ней остальные фото — в таком порядке их и сохранит бот.
+      const cover = document.getElementById("field-cover").files[0];
+      if (editing === null && !cover) {
         alertUser(texts.needPhoto);
         return;
       }
+      const files = Array.from(document.getElementById("field-photo").files);
+      if (editing === null) files.unshift(cover);
       const free = freePhotoPlaces(editing);
       if (files.length > free) {
         alertUser(texts.tooManyPhotos(free));
