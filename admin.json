@@ -13,7 +13,7 @@
     {
       "id": 3,
       "title": "Камеры",
-      "products": 2
+      "products": 3
     }
   ],
   "products": [
@@ -84,7 +84,7 @@
       "price_value": 25000,
       "description": "Крутой фотик для князя",
       "is_active": true,
-      "category_id": null,
+      "category_id": 3,
       "photo_url": "photos/1_1.jpg",
       "photos": [
         {
