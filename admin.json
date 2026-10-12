@@ -13,7 +13,7 @@
     {
       "id": 3,
       "title": "Камеры",
-      "products": 0
+      "products": 1
     }
   ],
   "products": [
@@ -40,7 +40,7 @@
       "price_value": 25000,
       "description": "Тест",
       "is_active": true,
-      "category_id": null,
+      "category_id": 3,
       "photo_url": "photos/4_8.jpg",
       "photos": [
         {
