@@ -2,8 +2,8 @@
   "bot_username": "film1_friend_bot",
   "categories": [
     {
-      "id": 1,
-      "title": "Зеркальные"
+      "id": 2,
+      "title": "Тест"
     }
   ],
   "products": [
@@ -12,7 +12,7 @@
       "title": "Тест",
       "price": "5 ₽",
       "description": "Тест",
-      "category_id": 1,
+      "category_id": 2,
       "photo_url": "photos/5_12.jpg",
       "photos": [
         "photos/5_12.jpg"

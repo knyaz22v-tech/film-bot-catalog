@@ -3,12 +3,12 @@
     {
       "id": 2,
       "title": "Тест",
-      "products": 0
+      "products": 1
     },
     {
       "id": 1,
       "title": "Зеркальные",
-      "products": 1
+      "products": 0
     }
   ],
   "products": [
@@ -19,7 +19,7 @@
       "price_value": 5,
       "description": "Тест",
       "is_active": true,
-      "category_id": 1,
+      "category_id": 2,
       "photo_url": "photos/5_12.jpg",
       "photos": [
         {
