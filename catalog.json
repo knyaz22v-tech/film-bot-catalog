@@ -41,7 +41,7 @@
       "title": "Canon a35",
       "price": "25 000 ₽",
       "description": "Тестовое описание",
-      "category_id": null,
+      "category_id": 3,
       "photo_url": "photos/2_2.jpg",
       "photos": [
         "photos/2_2.jpg"
