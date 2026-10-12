@@ -4,6 +4,11 @@
       "id": 1,
       "title": "Зеркальные",
       "products": 0
+    },
+    {
+      "id": 2,
+      "title": "Тест",
+      "products": 0
     }
   ],
   "products": [
