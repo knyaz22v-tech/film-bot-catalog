@@ -1,7 +1,23 @@
 {
   "bot_username": "film1_friend_bot",
-  "categories": [],
+  "categories": [
+    {
+      "id": 1,
+      "title": "Зеркальные"
+    }
+  ],
   "products": [
+    {
+      "id": 5,
+      "title": "Тест",
+      "price": "5 ₽",
+      "description": "Тест",
+      "category_id": 1,
+      "photo_url": "photos/5_12.jpg",
+      "photos": [
+        "photos/5_12.jpg"
+      ]
+    },
     {
       "id": 4,
       "title": "Olympus",
