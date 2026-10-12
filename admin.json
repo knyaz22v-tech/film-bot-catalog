@@ -1,14 +1,14 @@
 {
   "categories": [
     {
-      "id": 1,
-      "title": "Зеркальные",
-      "products": 1
-    },
-    {
       "id": 2,
       "title": "Тест",
       "products": 0
+    },
+    {
+      "id": 1,
+      "title": "Зеркальные",
+      "products": 1
     }
   ],
   "products": [
