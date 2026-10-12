@@ -1,5 +1,11 @@
 {
-  "categories": [],
+  "categories": [
+    {
+      "id": 1,
+      "title": "Зеркальные",
+      "products": 0
+    }
+  ],
   "products": [
     {
       "id": 4,
