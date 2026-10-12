@@ -7,7 +7,7 @@
   <!-- Официальный скрипт Telegram для Mini App. -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <!-- Те же стили, что у каталога: дизайн совпадает. -->
-  <link rel="stylesheet" href="style.css?v=10b6176d">
+  <link rel="stylesheet" href="style.css?v=840e9e92">
 </head>
 <body>
   <header>
@@ -18,6 +18,7 @@
   <div class="toolbar">
     <button id="add" class="primary" type="button">+ Добавить фотоаппарат</button>
     <button id="open-categories" type="button">Категории</button>
+    <button id="open-admins" type="button">Админы</button>
   </div>
 
   <main>
@@ -88,6 +89,28 @@
     </div>
   </section>
 
+  <!-- Админы каталога: добавляет и убирает только владелец. Список приходит сообщением в чат,
+       а не на страницу: сайт открыт всем, а username и ID админов посторонним видеть незачем. -->
+  <section id="admins" class="detail" aria-hidden="true">
+    <div class="body">
+      <h2>Админы</h2>
+      <p class="hint">Добавлять и убирать админов может только владелец — создатель группы админов.
+        Участники группы админов — тоже админы, добавлять их не нужно.</p>
+      <form id="admin-form" class="form category-add">
+        <label>@username или ID
+          <input id="field-admin-target" maxlength="64" placeholder="Например: @film_friend или 123456789" required>
+        </label>
+        <button class="primary" type="submit">+ Добавить админа</button>
+      </form>
+      <p class="hint">ID человек узнает, если напишет боту /myid.</p>
+      <button id="admins-list" type="button">Показать список админов</button>
+      <p class="hint">Список придёт сообщением в чат с ботом, там же можно убрать админа.</p>
+    </div>
+    <div class="actions">
+      <button id="admins-back" class="back" type="button">Назад</button>
+    </div>
+  </section>
+
   <script>
     // Панель работает в двух режимах:
     // - локальный (открыта на компьютере, где работает бот: http://127.0.0.1:8080/admin.html) —
@@ -135,6 +158,7 @@
       visible: "видят клиенты",
       hidden: "скрыт",
       networkError: "Не получилось связаться с ботом. Проверь, что бот запущен.",
+      adminsOnlyInTelegram: "Админов можно добавлять только в Telegram: открой панель кнопкой «🛠 Админ-панель».",
     };
 
     let products = [];
@@ -523,9 +547,36 @@
       if (telegram) telegram.BackButton.hide();
     }
 
-    // Кнопка «Назад» в шапке Telegram: закрывает редактор, а если он не открыт — экран категорий.
+    // Экран «Админы»: открыть и закрыть так же, как экран категорий.
+    function openAdmins() {
+      document.getElementById("field-admin-target").value = "";
+      const screen = document.getElementById("admins");
+      screen.classList.add("open");
+      screen.setAttribute("aria-hidden", "false");
+      screen.scrollTop = 0;
+      if (telegram) telegram.BackButton.show();
+    }
+
+    function closeAdmins() {
+      const screen = document.getElementById("admins");
+      screen.classList.remove("open");
+      screen.setAttribute("aria-hidden", "true");
+      if (telegram) telegram.BackButton.hide();
+    }
+
+    // Действие с админами уходит боту только через Telegram: бот сам проверит, что это владелец.
+    function adminsAction(data) {
+      if (isLocal) {
+        alertUser(texts.adminsOnlyInTelegram);
+        return;
+      }
+      sendToBot(data);
+    }
+
+    // Кнопка «Назад» в шапке Telegram: закрывает редактор, а если он не открыт — открытый экран.
     function goBack() {
       if (document.getElementById("editor").classList.contains("open")) closeEditor();
+      else if (document.getElementById("admins").classList.contains("open")) closeAdmins();
       else closeCategories();
     }
 
@@ -535,6 +586,14 @@
     });
     document.getElementById("open-categories").addEventListener("click", openCategories);
     document.getElementById("categories-back").addEventListener("click", closeCategories);
+
+    document.getElementById("admin-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      adminsAction({ action: "admin_add", target: document.getElementById("field-admin-target").value });
+    });
+    document.getElementById("admins-list").addEventListener("click", () => adminsAction({ action: "admins_list" }));
+    document.getElementById("open-admins").addEventListener("click", openAdmins);
+    document.getElementById("admins-back").addEventListener("click", closeAdmins);
 
     document.getElementById("add").addEventListener("click", () => openEditor(null));
     document.getElementById("editor-back").addEventListener("click", closeEditor);
