@@ -13,26 +13,10 @@
     {
       "id": 3,
       "title": "Камеры",
-      "products": 2
+      "products": 1
     }
   ],
   "products": [
-    {
-      "id": 2,
-      "title": "Canon a35",
-      "price": "25 000 ₽",
-      "price_value": 25000,
-      "description": "Тестовое описание",
-      "is_active": true,
-      "category_id": 3,
-      "photo_url": "photos/2_2.jpg",
-      "photos": [
-        {
-          "id": 2,
-          "url": "photos/2_2.jpg"
-        }
-      ]
-    },
     {
       "id": 1,
       "title": "Canon AE-1 с объективом 50 мм.",
