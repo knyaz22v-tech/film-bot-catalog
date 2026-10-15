@@ -1,5 +1,11 @@
 {
-  "categories": [],
+  "categories": [
+    {
+      "id": 4,
+      "title": "Пленочный",
+      "products": 0
+    }
+  ],
   "products": [
     {
       "id": 6,
