@@ -8,7 +8,7 @@
     {
       "id": 2,
       "title": "Тест",
-      "products": 1
+      "products": 0
     },
     {
       "id": 3,
@@ -17,22 +17,6 @@
     }
   ],
   "products": [
-    {
-      "id": 5,
-      "title": "Тест",
-      "price": "5 ₽",
-      "price_value": 5,
-      "description": "Тест",
-      "is_active": true,
-      "category_id": 2,
-      "photo_url": "photos/5_12.jpg",
-      "photos": [
-        {
-          "id": 12,
-          "url": "photos/5_12.jpg"
-        }
-      ]
-    },
     {
       "id": 4,
       "title": "Olympus",

@@ -2,26 +2,11 @@
   "bot_username": "film1_friend_bot",
   "categories": [
     {
-      "id": 2,
-      "title": "Тест"
-    },
-    {
       "id": 3,
       "title": "Камеры"
     }
   ],
   "products": [
-    {
-      "id": 5,
-      "title": "Тест",
-      "price": "5 ₽",
-      "description": "Тест",
-      "category_id": 2,
-      "photo_url": "photos/5_12.jpg",
-      "photos": [
-        "photos/5_12.jpg"
-      ]
-    },
     {
       "id": 4,
       "title": "Olympus",
