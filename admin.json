@@ -13,25 +13,8 @@
     {
       "id": 3,
       "title": "Камеры",
-      "products": 1
+      "products": 0
     }
   ],
-  "products": [
-    {
-      "id": 1,
-      "title": "Canon AE-1 с объективом 50 мм.",
-      "price": "25 000 ₽",
-      "price_value": 25000,
-      "description": "Крутой фотик для князя",
-      "is_active": true,
-      "category_id": 3,
-      "photo_url": "photos/1_1.jpg",
-      "photos": [
-        {
-          "id": 1,
-          "url": "photos/1_1.jpg"
-        }
-      ]
-    }
-  ]
+  "products": []
 }

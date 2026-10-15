@@ -1,22 +1,5 @@
 {
   "bot_username": "film1_friend_bot",
-  "categories": [
-    {
-      "id": 3,
-      "title": "Камеры"
-    }
-  ],
-  "products": [
-    {
-      "id": 1,
-      "title": "Canon AE-1 с объективом 50 мм.",
-      "price": "25 000 ₽",
-      "description": "Крутой фотик для князя",
-      "category_id": 3,
-      "photo_url": "photos/1_1.jpg",
-      "photos": [
-        "photos/1_1.jpg"
-      ]
-    }
-  ]
+  "categories": [],
+  "products": []
 }
